@@ -6,6 +6,7 @@ const db = require('./db');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+const asyncRoute = handler => (req, res, next) => Promise.resolve(handler(req, res, next)).catch(next);
 
 if (process.env.NODE_ENV === 'production') app.set('trust proxy', 1);
 app.use(express.json());
@@ -35,16 +36,16 @@ function publicUser(u) {
 }
 
 // ---------- Auth routes ----------
-app.post('/api/login', (req, res) => {
+app.post('/api/login', asyncRoute(async (req, res) => {
   const { username, password } = req.body || {};
   if (!username || !password) return res.status(400).json({ error: 'Username and password required' });
-  const user = db.prepare('SELECT * FROM users WHERE username = ?').get(username);
+  const user = await db.get('SELECT * FROM users WHERE username = ?', [username]);
   if (!user || !bcrypt.compareSync(password, user.password_hash)) {
     return res.status(401).json({ error: 'Invalid username or password' });
   }
   req.session.user = publicUser(user);
   res.json({ user: req.session.user });
-});
+}));
 
 app.post('/api/logout', (req, res) => {
   req.session.destroy(() => res.json({ ok: true }));
@@ -54,124 +55,140 @@ app.get('/api/me', (req, res) => {
   res.json({ user: req.session.user || null });
 });
 
-app.post('/api/change-password', requireLogin, (req, res) => {
+app.post('/api/change-password', requireLogin, asyncRoute(async (req, res) => {
   const { currentPassword, newPassword } = req.body || {};
   if (!newPassword || newPassword.length < 6) {
     return res.status(400).json({ error: 'New password must be at least 6 characters' });
   }
-  const user = db.prepare('SELECT * FROM users WHERE id = ?').get(req.session.user.id);
+  const user = await db.get('SELECT * FROM users WHERE id = ?', [req.session.user.id]);
   if (!bcrypt.compareSync(currentPassword || '', user.password_hash)) {
     return res.status(401).json({ error: 'Current password is incorrect' });
   }
   const hash = bcrypt.hashSync(newPassword, 10);
-  db.prepare('UPDATE users SET password_hash = ? WHERE id = ?').run(hash, user.id);
+  await db.run('UPDATE users SET password_hash = ? WHERE id = ?', [hash, user.id]);
   res.json({ ok: true });
-});
+}));
 
 // ---------- Summary ----------
-app.get('/api/summary', requireLogin, (req, res) => {
-  const collected = db.prepare('SELECT COALESCE(SUM(amount),0) AS t FROM contributors').get().t;
-  const spent = db.prepare('SELECT COALESCE(SUM(amount),0) AS t FROM expenses').get().t;
-  const count = db.prepare('SELECT COUNT(*) AS c FROM contributors').get().c;
-  res.json({ collected, spent, balance: collected - spent, contributorCount: count });
-});
+app.get('/api/summary', requireLogin, asyncRoute(async (req, res) => {
+  const [collectedRow, spentRow, countRow] = await Promise.all([
+    db.get('SELECT COALESCE(SUM(amount),0) AS t FROM contributors'),
+    db.get('SELECT COALESCE(SUM(amount),0) AS t FROM expenses'),
+    db.get('SELECT COUNT(*) AS c FROM contributors')
+  ]);
+  const collected = Number(collectedRow.t);
+  const spent = Number(spentRow.t);
+  res.json({ collected, spent, balance: collected - spent, contributorCount: Number(countRow.c) });
+}));
 
 // ---------- Contributors ----------
-app.get('/api/contributors', requireLogin, (req, res) => {
-  const rows = db.prepare('SELECT * FROM contributors ORDER BY date DESC, id DESC').all();
+app.get('/api/contributors', requireLogin, asyncRoute(async (req, res) => {
+  const rows = await db.all('SELECT * FROM contributors ORDER BY date DESC, id DESC');
   res.json(rows);
-});
+}));
 
-app.post('/api/contributors', requireAdmin, (req, res) => {
+app.post('/api/contributors', requireAdmin, asyncRoute(async (req, res) => {
   const { name, amount, date, createAccount, username, password } = req.body || {};
   if (!name || !amount || !date) return res.status(400).json({ error: 'Name, amount, and date are required' });
 
-  const insertContributor = db.prepare(
-    'INSERT INTO contributors (name, amount, date) VALUES (?, ?, ?)'
+  const info = await db.run(
+    'INSERT INTO contributors (name, amount, date) VALUES (?, ?, ?)',
+    [name, Number(amount), date]
   );
-  const info = insertContributor.run(name, Number(amount), date);
   const contributorId = info.lastInsertRowid;
 
   if (createAccount) {
     if (!username || !password) {
       return res.status(400).json({ error: 'Username and password required to create an account' });
     }
-    const exists = db.prepare('SELECT id FROM users WHERE username = ?').get(username);
+    const exists = await db.get('SELECT id FROM users WHERE username = ?', [username]);
     if (exists) return res.status(409).json({ error: 'Username already taken' });
     const hash = bcrypt.hashSync(password, 10);
-    const uInfo = db.prepare(
-      'INSERT INTO users (name, username, password_hash, role, contributor_id) VALUES (?, ?, ?, ?, ?)'
-    ).run(name, username, hash, 'user', contributorId);
-    db.prepare('UPDATE contributors SET user_id = ? WHERE id = ?').run(uInfo.lastInsertRowid, contributorId);
+    const uInfo = await db.run(
+      'INSERT INTO users (name, username, password_hash, role, contributor_id) VALUES (?, ?, ?, ?, ?)',
+      [name, username, hash, 'user', contributorId]
+    );
+    await db.run('UPDATE contributors SET user_id = ? WHERE id = ?', [uInfo.lastInsertRowid, contributorId]);
   }
 
-  res.status(201).json(db.prepare('SELECT * FROM contributors WHERE id = ?').get(contributorId));
-});
+  res.status(201).json(await db.get('SELECT * FROM contributors WHERE id = ?', [contributorId]));
+}));
 
-app.put('/api/contributors/:id', requireAdmin, (req, res) => {
+app.put('/api/contributors/:id', requireAdmin, asyncRoute(async (req, res) => {
   const { name, amount, date } = req.body || {};
-  const existing = db.prepare('SELECT * FROM contributors WHERE id = ?').get(req.params.id);
+  const existing = await db.get('SELECT * FROM contributors WHERE id = ?', [req.params.id]);
   if (!existing) return res.status(404).json({ error: 'Contributor not found' });
-  db.prepare('UPDATE contributors SET name = ?, amount = ?, date = ? WHERE id = ?').run(
+  await db.run('UPDATE contributors SET name = ?, amount = ?, date = ? WHERE id = ?', [
     name ?? existing.name, amount != null ? Number(amount) : existing.amount, date ?? existing.date, req.params.id
-  );
-  res.json(db.prepare('SELECT * FROM contributors WHERE id = ?').get(req.params.id));
-});
+  ]);
+  res.json(await db.get('SELECT * FROM contributors WHERE id = ?', [req.params.id]));
+}));
 
-app.delete('/api/contributors/:id', requireAdmin, (req, res) => {
-  const existing = db.prepare('SELECT * FROM contributors WHERE id = ?').get(req.params.id);
+app.delete('/api/contributors/:id', requireAdmin, asyncRoute(async (req, res) => {
+  const existing = await db.get('SELECT * FROM contributors WHERE id = ?', [req.params.id]);
   if (!existing) return res.status(404).json({ error: 'Contributor not found' });
-  db.prepare('DELETE FROM contributors WHERE id = ?').run(req.params.id);
+  await db.run('DELETE FROM contributors WHERE id = ?', [req.params.id]);
   res.json({ ok: true });
-});
+}));
 
 // ---------- Expenses ----------
-app.get('/api/expenses', requireLogin, (req, res) => {
-  const rows = db.prepare('SELECT * FROM expenses ORDER BY date DESC, id DESC').all();
+app.get('/api/expenses', requireLogin, asyncRoute(async (req, res) => {
+  const rows = await db.all('SELECT * FROM expenses ORDER BY date DESC, id DESC');
   res.json(rows);
-});
+}));
 
-app.post('/api/expenses', requireAdmin, (req, res) => {
+app.post('/api/expenses', requireAdmin, asyncRoute(async (req, res) => {
   const { title, description, amount, date } = req.body || {};
   if (!title || !amount || !date) return res.status(400).json({ error: 'Title, amount, and date are required' });
-  const info = db.prepare(
-    'INSERT INTO expenses (title, description, amount, date, created_by) VALUES (?, ?, ?, ?, ?)'
-  ).run(title, description || '', Number(amount), date, req.session.user.id);
-  res.status(201).json(db.prepare('SELECT * FROM expenses WHERE id = ?').get(info.lastInsertRowid));
-});
+  const info = await db.run(
+    'INSERT INTO expenses (title, description, amount, date, created_by) VALUES (?, ?, ?, ?, ?)',
+    [title, description || '', Number(amount), date, req.session.user.id]
+  );
+  res.status(201).json(await db.get('SELECT * FROM expenses WHERE id = ?', [info.lastInsertRowid]));
+}));
 
-app.put('/api/expenses/:id', requireAdmin, (req, res) => {
+app.put('/api/expenses/:id', requireAdmin, asyncRoute(async (req, res) => {
   const { title, description, amount, date } = req.body || {};
-  const existing = db.prepare('SELECT * FROM expenses WHERE id = ?').get(req.params.id);
+  const existing = await db.get('SELECT * FROM expenses WHERE id = ?', [req.params.id]);
   if (!existing) return res.status(404).json({ error: 'Expense not found' });
-  db.prepare('UPDATE expenses SET title = ?, description = ?, amount = ?, date = ? WHERE id = ?').run(
+  await db.run('UPDATE expenses SET title = ?, description = ?, amount = ?, date = ? WHERE id = ?', [
     title ?? existing.title, description ?? existing.description,
     amount != null ? Number(amount) : existing.amount, date ?? existing.date, req.params.id
-  );
-  res.json(db.prepare('SELECT * FROM expenses WHERE id = ?').get(req.params.id));
-});
+  ]);
+  res.json(await db.get('SELECT * FROM expenses WHERE id = ?', [req.params.id]));
+}));
 
-app.delete('/api/expenses/:id', requireAdmin, (req, res) => {
-  const existing = db.prepare('SELECT * FROM expenses WHERE id = ?').get(req.params.id);
+app.delete('/api/expenses/:id', requireAdmin, asyncRoute(async (req, res) => {
+  const existing = await db.get('SELECT * FROM expenses WHERE id = ?', [req.params.id]);
   if (!existing) return res.status(404).json({ error: 'Expense not found' });
-  db.prepare('DELETE FROM expenses WHERE id = ?').run(req.params.id);
+  await db.run('DELETE FROM expenses WHERE id = ?', [req.params.id]);
   res.json({ ok: true });
-});
+}));
 
 // ---------- Users (admin only, for managing contributor logins) ----------
-app.get('/api/users', requireAdmin, (req, res) => {
-  const rows = db.prepare('SELECT id, name, username, role, contributor_id FROM users ORDER BY id').all();
+app.get('/api/users', requireAdmin, asyncRoute(async (req, res) => {
+  const rows = await db.all('SELECT id, name, username, role, contributor_id FROM users ORDER BY id');
   res.json(rows);
-});
+}));
 
-app.delete('/api/users/:id', requireAdmin, (req, res) => {
+app.delete('/api/users/:id', requireAdmin, asyncRoute(async (req, res) => {
   if (Number(req.params.id) === req.session.user.id) {
     return res.status(400).json({ error: 'You cannot delete your own account' });
   }
-  db.prepare('DELETE FROM users WHERE id = ?').run(req.params.id);
+  await db.run('DELETE FROM users WHERE id = ?', [req.params.id]);
   res.json({ ok: true });
+}));
+
+app.use((err, req, res, next) => {
+  console.error(err);
+  if (!res.headersSent) res.status(500).json({ error: 'Internal server error' });
 });
 
-app.listen(PORT, () => {
-  console.log(`Navratri Fund Manager running at http://localhost:${PORT}`);
+db.initialize().then(() => {
+  app.listen(PORT, () => {
+    console.log(`Navratri Fund Manager running at http://localhost:${PORT}`);
+  });
+}).catch(err => {
+  console.error('Database initialization failed:', err);
+  process.exit(1);
 });

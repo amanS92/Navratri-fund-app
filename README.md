@@ -1,7 +1,7 @@
 # Navratri Fund Manager
 
 A real full-stack web app for managing Navratri festival fund collections and expenses:
-Node.js + Express backend, SQLite database (file-based, no separate server to install),
+Node.js + Express backend, SQLite for local development and PostgreSQL for hosting,
 password-based login with role-based access control enforced on the backend.
 
 ## Setup
@@ -37,25 +37,29 @@ Log in and change this password immediately (Account tab → Change Password).
 - A contributor's own row is highlighted when they're logged in under their linked
   account.
 
-## Deploying it to Render
+## Free hosting with Render and Neon
 
-The included `render.yaml` configures a hosted Node service, HTTPS-aware login
-cookies, generated secrets, and a persistent disk for the SQLite database. The
-persistent disk requires Render's paid Starter plan; without persistent storage,
-the database can be lost when the service restarts.
+The included `render.yaml` configures a free Render web service. Render's free
+filesystem is temporary, so the hosted app uses a Neon PostgreSQL database via
+`DATABASE_URL`; local development continues to use SQLite.
 
-1. Push this project to a GitHub repository.
-2. In Render, choose **New → Blueprint**, connect the repository, and apply the
-  `render.yaml` blueprint. Render will build and deploy the app and provide a
-  public `onrender.com` URL that works from other devices while the service is up.
-3. In the Render service's environment settings, retrieve the generated
-  `ADMIN_PASSWORD` value. Log in with username `admin` and that password, then
-  change the password from **Account**. Do not share the initial password.
+1. Create a Neon project on its Free plan and copy its PostgreSQL connection
+  string. Neon currently lists a permanent $0 plan with usage limits; review its
+  current limits and backup options before using it for important records.
+2. In Render, choose **New → Blueprint**, connect this GitHub repository, and
+  apply the `render.yaml` blueprint. Paste the Neon connection string when
+  prompted for `DATABASE_URL`; Render generates the session and initial admin
+  passwords.
+3. Wait for the deploy, then retrieve the generated `ADMIN_PASSWORD` from the
+  Render service's environment settings. Log in as `admin` and change that
+  password immediately.
 
-The database is stored at `/var/data/navratri_fund.db` on the attached persistent
-disk. Keep that disk attached when changing service settings or redeploying.
-Local development still uses `navratri_fund.db` in the project folder and the
-default local login `admin` / `admin123`.
+Both providers' free plans have limits. Render free web services spin down after
+15 minutes idle and can take about a minute to wake. Neon Free compute scales to
+zero while idle and has storage and usage limits. The database persists across
+Render restarts, but free services are intended for small projects and do not
+provide a production uptime guarantee. Local development uses
+`navratri_fund.db` and the default login `admin` / `admin123`.
 
 ## Project structure
 
