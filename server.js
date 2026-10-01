@@ -31,6 +31,7 @@ app.use(session({
 if (!process.env.VERCEL) app.use(express.static(path.join(__dirname, 'public')));
 
 app.get('/health', (req, res) => res.status(200).send('ok'));
+app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
 
 // ---------- Auth helpers ----------
 function requireLogin(req, res, next) {
