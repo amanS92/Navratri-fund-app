@@ -32,6 +32,10 @@ Log in and change this password immediately (Account tab → Change Password).
   contributor) are read-only: the UI hides edit/delete controls, and the backend
   also rejects any write request from a non-admin session — so permissions can't be
   bypassed by editing the page or calling the API directly.
+- **Guest viewers** can enter without an account or password. Guest access is
+  anonymous and shared; anyone with the site URL can view and download the records.
+- The interface can be switched between English and Hindi, and each signed-in view
+  can be downloaded as a CSV file.
 - Remaining balance is never stored — it's always computed on the server as
   `SUM(contributions) − SUM(expenses)`.
 - A contributor's own row is highlighted when they're logged in under their linked

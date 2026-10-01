@@ -23,11 +23,13 @@
     <div class="diya-icon">🪔</div>
     <h1>Navratri Fund Manager</h1>
     <p class="muted">Sign in to continue</p>
+    <button class="secondary language-toggle" data-language-toggle type="button">हिंदी</button>
     <label>Username</label>
     <input id="loginUsername" autocomplete="username">
     <label>Password</label>
     <input id="loginPassword" type="password" autocomplete="current-password">
     <button id="loginBtn"><i data-lucide="log-in"></i> Login</button>
+    <button id="guestLoginBtn" class="secondary"><i data-lucide="eye"></i> Continue as viewer</button>
     <div id="loginError" class="error"></div>
     <p class="muted small">Sign in with the account credentials provided by your administrator.</p>
   </div>
@@ -37,6 +39,10 @@
   <div class="header">
     <div class="rangoli-corner" aria-hidden="true"></div>
     <h1><span class="diya-icon small">🪔</span> Navratri Fund Manager <span class="badge" id="roleBadge"></span></h1>
+    <div class="header-actions">
+      <button class="tab" data-language-toggle type="button">हिंदी</button>
+      <button class="tab" id="downloadBtn" type="button"><i data-lucide="download"></i> Download CSV</button>
+    </div>
     <div class="tabs">
       <button class="tab active" data-tab="dash"><i data-lucide="layout-dashboard"></i> Dashboard</button>
       <button class="tab" data-tab="contrib"><i data-lucide="users"></i> Contributors</button>

@@ -1,10 +1,88 @@
 let me = null;
 let contributors = [], expenses = [], users = [];
 let tab = 'dash';
+let language = localStorage.getItem('fundLanguage') || 'en';
+const originalText = new WeakMap();
+
+const hindi = {
+  'Sign in to continue':'जारी रखने के लिए लॉग इन करें', 'Username':'यूज़रनेम', 'Password':'पासवर्ड',
+  'Login':'लॉग इन', 'Continue as viewer':'दर्शक के रूप में जारी रखें',
+  'Sign in with the account credentials provided by your administrator.':'एडमिन द्वारा दिए गए खाते से लॉग इन करें।',
+  'Dashboard':'डैशबोर्ड', 'Contributors':'योगदानकर्ता', 'Expenses':'खर्च', 'Summary':'सारांश',
+  'Account':'खाता', 'Logout':'लॉग आउट', 'Admin':'एडमिन', 'Viewer':'दर्शक',
+  'Download CSV':'CSV डाउनलोड', 'Total Collected':'कुल जमा', 'People':'लोग', 'Total Expenses':'कुल खर्च',
+  'Remaining Balance':'बाकी राशि', 'Recent Contributors':'हाल के योगदानकर्ता', 'Recent Expenses':'हाल के खर्च',
+  'Nothing added yet.':'अभी तक कुछ नहीं जोड़ा गया।', 'Search name…':'नाम खोजें…',
+  'Sort: Date':'क्रम: तारीख', 'Sort: Amount':'क्रम: राशि', 'Sort: Name':'क्रम: नाम',
+  'Add Contributor':'योगदानकर्ता जोड़ें', 'Total Contributors:':'कुल योगदानकर्ता:',
+  'Name':'नाम', 'Amount':'राशि', 'Date':'तारीख', 'No contributors yet.':'अभी कोई योगदानकर्ता नहीं है।',
+  'Edit':'बदलें', 'Del':'हटाएं', 'Search expense…':'खर्च खोजें…', 'Add Expense':'खर्च जोड़ें',
+  'Expense':'खर्च', 'Description':'विवरण', 'No expenses yet.':'अभी कोई खर्च नहीं है।',
+  'FESTIVAL FINANCES':'उत्सव का हिसाब', 'Financial Summary':'वित्तीय सारांश', 'Live totals':'वर्तमान योग',
+  'Total money collected':'कुल जमा राशि', 'Total money spent':'कुल खर्च राशि', 'Remaining balance':'बाकी राशि',
+  'spent':'खर्च', 'Spent':'खर्च', 'Remaining':'बाकी', 'Change Password':'पासवर्ड बदलें',
+  'Current Password':'मौजूदा पासवर्ड', 'New Password':'नया पासवर्ड', 'Update Password':'पासवर्ड अपडेट करें',
+  'Password updated.':'पासवर्ड अपडेट हो गया।', 'Login Accounts':'लॉगिन खाते', 'Role':'भूमिका',
+  'Remove':'हटाएं', 'Viewer access':'दर्शक की पहुंच',
+  'You are viewing this page without an account. Changes are only available to an administrator.':'आप बिना खाते के यह पेज देख रहे हैं। बदलाव केवल एडमिन कर सकता है।',
+  'Add':'जोड़ें', 'Contributor':'योगदानकर्ता', 'Amount (₹)':'राशि (₹)',
+  'Create a login account for this contributor':'इस योगदानकर्ता के लिए लॉगिन खाता बनाएं',
+  'Title':'शीर्षक', 'Expense Title':'खर्च का शीर्षक', 'Cancel':'रद्द करें', 'Save':'सेव करें',
+  'Confirm Delete':'हटाने की पुष्टि करें', 'Delete':'हटाएं', 'Delete this contributor record?':'यह योगदान रिकॉर्ड हटाएं?',
+  'Delete this expense record?':'यह खर्च रिकॉर्ड हटाएं?', 'Remove this login account?':'यह लॉगिन खाता हटाएं?',
+  'Name, amount and date are required':'नाम, राशि और तारीख जरूरी हैं',
+  'Title, amount and date are required':'शीर्षक, राशि और तारीख जरूरी हैं', 'Saved':'सेव हो गया',
+  'Deleted':'हटा दिया गया', 'Removed':'हटा दिया गया', 'You cannot delete your own account':'आप अपना खाता नहीं हटा सकते',
+  'New password must be at least 6 characters':'नया पासवर्ड कम से कम 6 अक्षर का होना चाहिए',
+  'Current password is incorrect':'मौजूदा पासवर्ड गलत है', 'Invalid username or password':'यूज़रनेम या पासवर्ड गलत है',
+  'Username and password required':'यूज़रनेम और पासवर्ड जरूरी हैं', 'Not logged in':'लॉगिन नहीं है',
+  'Admin access required':'केवल एडमिन यह कर सकता है', 'CSV downloaded':'CSV डाउनलोड हो गई',
+  'Contributor':'योगदानकर्ता', 'Type':'प्रकार', 'Metric':'माप', 'Value':'मान', 'Account':'खाता',
+  'Edit Contributor':'योगदानकर्ता बदलें', 'Add Contributor':'योगदानकर्ता जोड़ें',
+  'Edit Expense':'खर्च बदलें', 'Add Expense':'खर्च जोड़ें', 'Username already taken':'यह यूज़रनेम पहले से मौजूद है',
+  'user':'उपयोगकर्ता', 'admin':'एडमिन',
+  'Login Accounts':'लॉगिन खाते', 'Guest viewer':'अतिथि दर्शक', 'You':'आप'
+};
+
+function translateText(text){
+  const trimmed = text.trim();
+  if (language === 'en') return text;
+  if (hindi[trimmed]) return text.replace(trimmed, hindi[trimmed]);
+  const peopleCount = trimmed.match(/^(\d+) People$/);
+  if (peopleCount) return text.replace(trimmed, `${peopleCount[1]} लोग`);
+  if (trimmed.startsWith('Total Contributors:')) {
+    return text.replace('Total Contributors:', hindi['Total Contributors:']).replace('Total Collected:', 'कुल जमा:');
+  }
+  return text;
+}
+
+function translatePage(){
+  document.documentElement.lang = language === 'hi' ? 'hi' : 'en';
+  const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+  let node;
+  while ((node = walker.nextNode())) {
+    if (node.parentElement?.closest('td') && !node.parentElement.closest('button') && !node.parentElement.classList.contains('empty')) continue;
+    if (!originalText.has(node)) originalText.set(node, node.nodeValue);
+    node.nodeValue = translateText(originalText.get(node));
+  }
+  document.querySelectorAll('input[placeholder],textarea[placeholder]').forEach(input=>{
+    if (!input.dataset.englishPlaceholder) input.dataset.englishPlaceholder = input.placeholder;
+    input.placeholder = language === 'hi' ? (hindi[input.dataset.englishPlaceholder] || input.dataset.englishPlaceholder) : input.dataset.englishPlaceholder;
+  });
+  document.querySelectorAll('[data-language-toggle]').forEach(button=>{
+    button.textContent = language === 'hi' ? 'English' : 'हिंदी';
+  });
+}
+
+document.querySelectorAll('[data-language-toggle]').forEach(button=>button.addEventListener('click', ()=>{
+  language = language === 'en' ? 'hi' : 'en';
+  localStorage.setItem('fundLanguage', language);
+  translatePage();
+}));
 
 function fmt(n){ return '₹' + Number(n||0).toLocaleString('en-IN'); }
 function esc(s){ return String(s||'').replace(/[&<>"]/g, m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m])); }
-function toast(msg){ const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),2200); }
+function toast(msg){ const t=document.getElementById('toast'); t.textContent=translateText(msg); t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),2200); }
 
 async function api(path, opts={}) {
   const res = await fetch('/api'+path, {
@@ -20,6 +98,15 @@ async function api(path, opts={}) {
 // ---------- Login ----------
 document.getElementById('loginBtn').addEventListener('click', doLogin);
 document.getElementById('loginPassword').addEventListener('keydown', e=>{ if(e.key==='Enter') doLogin(); });
+document.getElementById('guestLoginBtn').addEventListener('click', async ()=>{
+  const errEl = document.getElementById('loginError');
+  errEl.textContent = '';
+  try{
+    const data = await api('/guest-login', { method:'POST' });
+    me = data.user;
+    showApp();
+  }catch(e){ errEl.textContent = translateText(e.message); }
+});
 
 async function doLogin(){
   const username = document.getElementById('loginUsername').value.trim();
@@ -30,7 +117,7 @@ async function doLogin(){
     const data = await api('/login', { method:'POST', body:{ username, password } });
     me = data.user;
     showApp();
-  }catch(e){ errEl.textContent = e.message; }
+  }catch(e){ errEl.textContent = translateText(e.message); }
 }
 
 document.getElementById('logoutBtn').addEventListener('click', async ()=>{
@@ -53,6 +140,7 @@ function showApp(){
   document.getElementById('loginScreen').classList.add('hidden');
   document.getElementById('appScreen').classList.remove('hidden');
   document.getElementById('roleBadge').textContent = me.role === 'admin' ? 'Admin' : 'Viewer';
+  document.getElementById('downloadBtn').classList.toggle('hidden', !isAdmin());
   loadAll();
 }
 
@@ -74,6 +162,50 @@ function totals(){
 }
 function isAdmin(){ return me && me.role === 'admin'; }
 function isMe(c){ return me && c.user_id === me.id; }
+function label(text){ return language === 'hi' ? (hindi[text] || text) : text; }
+
+function csvCell(value){
+  let text = String(value ?? '');
+  if (/^[=+\-@\t\r]/.test(text)) text = `'${text}`;
+  return `"${text.replace(/"/g, '""')}"`;
+}
+
+function downloadCurrentPage(){
+  const t = totals();
+  const headers = ['Type','Name','Amount','Date','Description'].map(label);
+  let rows = [];
+  if (tab === 'contrib'){
+    rows = contributors.map(c=>[label('Contributor'),c.name,fmt(c.amount),c.date,'']);
+  }else if (tab === 'exp'){
+    rows = expenses.map(e=>[label('Expense'),e.title,fmt(e.amount),e.date,e.description||'']);
+  }else if (tab === 'account' && isAdmin()){
+    rows = users.map(u=>[label('Login Accounts'),u.name,u.username,u.role,'']);
+  }else if (tab === 'account'){
+    rows = [[label('Account'),me.name,me.role,'','']];
+  }else{
+    rows = [
+      [label('Summary'),label('Total Collected'),fmt(t.collected),'',''],
+      [label('Summary'),label('Total Expenses'),fmt(t.spent),'',''],
+      [label('Summary'),label('Remaining Balance'),fmt(t.balance),'','']
+    ];
+    const contributorRows = tab === 'dash' ? contributors.slice(0,5) : contributors;
+    const expenseRows = tab === 'dash' ? expenses.slice(0,5) : expenses;
+    rows.push(...contributorRows.map(c=>[label('Contributor'),c.name,fmt(c.amount),c.date,'']));
+    rows.push(...expenseRows.map(e=>[label('Expense'),e.title,fmt(e.amount),e.date,e.description||'']));
+  }
+  const csv = '\uFEFF' + [headers, ...rows].map(row=>row.map(csvCell).join(',')).join('\r\n');
+  const url = URL.createObjectURL(new Blob([csv], { type:'text/csv;charset=utf-8' }));
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = `navratri-${tab}-${new Date().toISOString().slice(0,10)}.csv`;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  setTimeout(()=>URL.revokeObjectURL(url), 1000);
+  toast(label('CSV downloaded'));
+}
+
+document.getElementById('downloadBtn').addEventListener('click', downloadCurrentPage);
 
 function render(){
   const app = document.getElementById('app');
@@ -84,6 +216,7 @@ function render(){
   else if (tab==='sum') app.innerHTML = sumHTML(t);
   else app.innerHTML = accountHTML();
   wireEvents();
+  translatePage();
   if (window.lucide) lucide.createIcons();
 }
 
@@ -183,6 +316,9 @@ function sumHTML(t){
 }
 
 function accountHTML(){
+  if (me.role === 'viewer') return `<div class="section"><h2><i data-lucide="eye"></i> Viewer access</h2>
+    <p class="muted">You are viewing this page without an account. Changes are only available to an administrator.</p>
+  </div>`;
   let usersSection = '';
   if (isAdmin()){
     usersSection = `<div class="section"><h2><i data-lucide="shield-check"></i> Login Accounts</h2>
@@ -208,6 +344,7 @@ function openModal(html){
   bg.innerHTML=`<div class="modal">${html}</div>`;
   bg.addEventListener('click', e=>{ if(e.target===bg) bg.remove(); });
   document.body.appendChild(bg);
+  translatePage();
 }
 function closeModal(){ document.getElementById('modalBg')?.remove(); }
 
@@ -297,7 +434,7 @@ function wireEvents(){
   document.querySelectorAll('.delU').forEach(b=>b.onclick=()=>confirmDelete('Remove this login account?', async ()=>{
     try{ await api('/users/'+b.dataset.id, { method:'DELETE' }); toast('Removed'); loadAll(); }catch(e){ toast(e.message); }
   }));
-  document.getElementById('sortC')?.addEventListener('change', ()=>{ document.getElementById('cBody').innerHTML = renderContribRows(); wireEvents(); });
+  document.getElementById('sortC')?.addEventListener('change', ()=>{ document.getElementById('cBody').innerHTML = renderContribRows(); wireEvents(); translatePage(); });
   document.getElementById('searchC')?.addEventListener('input', e=>{
     const q = e.target.value.toLowerCase();
     document.querySelectorAll('#cBody tr').forEach(tr=>{ tr.style.display = tr.textContent.toLowerCase().includes(q)?'':'none'; });
@@ -319,10 +456,11 @@ function wireEvents(){
     const msg = document.getElementById('passMsg');
     try{
       await api('/change-password', { method:'POST', body:{ currentPassword, newPassword } });
-      msg.style.color = 'var(--good)'; msg.textContent = 'Password updated.';
+      msg.style.color = 'var(--good)'; msg.textContent = translateText('Password updated.');
       document.getElementById('curPass').value=''; document.getElementById('newPass').value='';
-    }catch(e){ msg.style.color='var(--bad)'; msg.textContent = e.message; }
+    }catch(e){ msg.style.color='var(--bad)'; msg.textContent = translateText(e.message); }
   });
 }
 
+translatePage();
 checkSession();

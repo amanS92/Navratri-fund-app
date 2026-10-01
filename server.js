@@ -60,6 +60,11 @@ app.post('/api/login', asyncRoute(async (req, res) => {
   res.json({ user: req.session.user });
 }));
 
+app.post('/api/guest-login', (req, res) => {
+  req.session.user = { id: null, name: 'Guest viewer', username: null, role: 'viewer', contributor_id: null };
+  res.json({ user: req.session.user });
+});
+
 app.post('/api/logout', (req, res) => {
   req.session.destroy(() => res.json({ ok: true }));
 });
