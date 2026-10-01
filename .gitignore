@@ -1,0 +1,5 @@
+node_modules/
+navratri_fund.db
+navratri_fund.db-journal
+navratri_fund.db-wal
+navratri_fund.db-shm

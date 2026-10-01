@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Navratri Fund Manager</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<!-- sitewide floating festive particles (diyas + marigold petals) -->
+<div class="floaters" aria-hidden="true">
+  <span class="floater f1">🪔</span><span class="floater f2">🌼</span><span class="floater f3">✨</span>
+  <span class="floater f4">🪔</span><span class="floater f5">🌼</span><span class="floater f6">✨</span>
+  <span class="floater f7">🌼</span><span class="floater f8">🪔</span>
+</div>
+
+<div id="loginScreen" class="login-screen">
+  <div class="rangoli-bg" aria-hidden="true"></div>
+  <div class="login-card fade-in">
+    <div class="diya-icon">🪔</div>
+    <h1>Navratri Fund Manager</h1>
+    <p class="muted">Sign in to continue</p>
+    <label>Username</label>
+    <input id="loginUsername" autocomplete="username">
+    <label>Password</label>
+    <input id="loginPassword" type="password" autocomplete="current-password">
+    <button id="loginBtn"><i data-lucide="log-in"></i> Login</button>
+    <div id="loginError" class="error"></div>
+    <p class="muted small">Default admin: <code>admin</code> / <code>admin123</code> — change this after first login.</p>
+  </div>
+</div>
+
+<div id="appScreen" class="hidden">
+  <div class="header">
+    <div class="rangoli-corner" aria-hidden="true"></div>
+    <h1><span class="diya-icon small">🪔</span> Navratri Fund Manager <span class="badge" id="roleBadge"></span></h1>
+    <div class="tabs">
+      <button class="tab active" data-tab="dash"><i data-lucide="layout-dashboard"></i> Dashboard</button>
+      <button class="tab" data-tab="contrib"><i data-lucide="users"></i> Contributors</button>
+      <button class="tab" data-tab="exp"><i data-lucide="receipt"></i> Expenses</button>
+      <button class="tab" data-tab="sum"><i data-lucide="pie-chart"></i> Summary</button>
+      <button class="tab" data-tab="account"><i data-lucide="user-circle"></i> Account</button>
+      <button class="tab" id="logoutBtn"><i data-lucide="log-out"></i> Logout</button>
+    </div>
+    <div class="toran" aria-hidden="true">
+      <span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span>
+    </div>
+  </div>
+  <div class="wrap" id="app"></div>
+</div>
+<div id="toast" class="toast"></div>
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
