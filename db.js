@@ -18,6 +18,7 @@ if (postgres) {
     return sql.replace(/\?/g, () => `$${++index}`);
   };
   db = {
+    pool,
     async get(sql, params = []) {
       const result = await pool.query(convertPlaceholders(sql), params);
       return result.rows[0];
@@ -78,6 +79,12 @@ async function initialize() {
         created_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
+      CREATE TABLE IF NOT EXISTS "session" (
+        sid VARCHAR NOT NULL PRIMARY KEY,
+        sess JSON NOT NULL,
+        expire TIMESTAMP(6) NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS "IDX_session_expire" ON "session" (expire);
     `);
   } else {
     db.exec(`
@@ -126,4 +133,4 @@ async function initialize() {
   }
 }
 
-module.exports = { ...db, initialize };
+module.exports = { ...db, initialize, pool: postgres ? db.pool : null, postgres };

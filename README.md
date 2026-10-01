@@ -37,29 +37,29 @@ Log in and change this password immediately (Account tab → Change Password).
 - A contributor's own row is highlighted when they're logged in under their linked
   account.
 
-## Free hosting with Render and Neon
+## Free hosting with Vercel and Neon
 
-The included `render.yaml` configures a free Render web service. Render's free
-filesystem is temporary, so the hosted app uses a Neon PostgreSQL database via
+Vercel runs the Express API as a serverless function and serves files in `public/`
+from its CDN. Hosted API data and login sessions use Neon PostgreSQL through
 `DATABASE_URL`; local development continues to use SQLite.
 
-1. Create a Neon project on its Free plan and copy its PostgreSQL connection
-  string. Neon currently lists a permanent $0 plan with usage limits; review its
-  current limits and backup options before using it for important records.
-2. In Render, choose **New → Blueprint**, connect this GitHub repository, and
-  apply the `render.yaml` blueprint. Paste the Neon connection string when
-  prompted for `DATABASE_URL`; Render generates the session and initial admin
-  passwords.
-3. Wait for the deploy, then retrieve the generated `ADMIN_PASSWORD` from the
-  Render service's environment settings. Log in as `admin` and change that
-  password immediately.
+1. Create a Neon project and copy its pooled PostgreSQL connection string. Keep
+the connection string private.
+2. Import this GitHub repository into Vercel. Set the project root to the repo
+root and keep the detected Express framework settings.
+3. Add these Production environment variables in Vercel, then redeploy:
+  `DATABASE_URL` (Neon connection string), `SESSION_SECRET` (a long random
+  secret), and `ADMIN_PASSWORD` (a new strong initial admin password).
+  `NODE_ENV` is supplied by Vercel for production deployments.
+4. Open the deployment URL and log in as `admin` with `ADMIN_PASSWORD`. Change
+  the password immediately from **Account**.
 
-Both providers' free plans have limits. Render free web services spin down after
-15 minutes idle and can take about a minute to wake. Neon Free compute scales to
-zero while idle and has storage and usage limits. The database persists across
-Render restarts, but free services are intended for small projects and do not
-provide a production uptime guarantee. Local development uses
-`navratri_fund.db` and the default login `admin` / `admin123`.
+Neon's Free plan is currently $0 with usage limits (including 0.5 GB storage and
+limited compute). Vercel Hobby is currently $0 for personal, non-commercial use;
+check that its terms fit your use. Both plans have usage limits and are not a
+production uptime guarantee. The current local SQLite data is not automatically
+copied into Neon. Local development uses `navratri_fund.db` and the default login
+`admin` / `admin123`.
 
 ## Project structure
 

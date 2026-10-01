@@ -1,5 +1,6 @@
 const express = require('express');
 const session = require('express-session');
+const connectPgSimple = require('connect-pg-simple');
 const bcrypt = require('bcryptjs');
 const path = require('path');
 const db = require('./db');
@@ -7,16 +8,27 @@ const db = require('./db');
 const app = express();
 const PORT = process.env.PORT || 3000;
 const asyncRoute = handler => (req, res, next) => Promise.resolve(handler(req, res, next)).catch(next);
+const production = process.env.NODE_ENV === 'production';
 
-if (process.env.NODE_ENV === 'production') app.set('trust proxy', 1);
+if (production && (!process.env.DATABASE_URL || !process.env.SESSION_SECRET)) {
+  throw new Error('Production requires DATABASE_URL and SESSION_SECRET environment variables.');
+}
+
+if (production) app.set('trust proxy', 1);
 app.use(express.json());
+const databaseReady = db.initialize();
+app.use((req, res, next) => databaseReady.then(() => next()).catch(next));
+const sessionStore = db.postgres
+  ? new (connectPgSimple(session))({ pool: db.pool, createTableIfMissing: false })
+  : undefined;
 app.use(session({
   secret: process.env.SESSION_SECRET || 'change-this-secret-in-production',
+  store: sessionStore,
   resave: false,
   saveUninitialized: false,
-  cookie: { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'lax', maxAge: 1000 * 60 * 60 * 8 }
+  cookie: { httpOnly: true, secure: production, sameSite: 'lax', maxAge: 1000 * 60 * 60 * 8 }
 }));
-app.use(express.static(path.join(__dirname, 'public')));
+if (!process.env.VERCEL) app.use(express.static(path.join(__dirname, 'public')));
 
 app.get('/health', (req, res) => res.status(200).send('ok'));
 
@@ -184,7 +196,9 @@ app.use((err, req, res, next) => {
   if (!res.headersSent) res.status(500).json({ error: 'Internal server error' });
 });
 
-db.initialize().then(() => {
+module.exports = app;
+
+if (!process.env.VERCEL) databaseReady.then(() => {
   app.listen(PORT, () => {
     console.log(`Navratri Fund Manager running at http://localhost:${PORT}`);
   });
